@@ -1,0 +1,220 @@
+from datetime import datetime, timedelta,date
+import pandas as pd
+import numpy as np
+from __future__ import division
+from sklearn.cluster import KMeans
+import matplotlib.pyplot as plt
+
+import plotly.offline as pyoff
+import plotly.graph_objs as go
+
+df = pd.read_csv(r'C:\Users\PC\Desktop\VTI Academy\matches_1930_2022.csv')
+df.info()
+print(df.describe())
+
+df = pd.read_csv(r'C:\Users\PC\Desktop\VTI Academy\matches_1930_2022.csv',encoding ='utf-8', encoding_errors= 'replace')
+df.info()
+print(df.describe())
+df.to_csv('World Cup_final_cleanded.scv', index=False, encoding="utf-8")
+print()
+df.to_excel('World Cup_cleanded.xlsx', index=False)
+
+
+import pandas as pd
+from scipy.stats import pearsonr
+df = pd.read_csv(r'C:\Users\PC\Desktop\VTI Academy\World Cup_final_cleanded.scv')
+df.info()
+#Câu 1 : Xác định kết quả trận đấu
+df['result'] = df.apply(lambda row: 'Home Win' if row['home_score'] > row['away_score'] 
+                        else 'Away Win' if row['home_score'] < row['away_score'] 
+                        else 'Draw', axis=1)
+# Tính tổng số trận
+total_matches = len(df)
+
+# Tính số trận thắng của đội chủ nhà và đội khách
+home_wins = (df['result'] == 'Home Win').sum()
+away_wins = (df['result'] == 'Away Win').sum()
+draws = (df['result'] == 'Draw').sum()
+
+# Tính tỷ lệ
+home_win_rate = home_wins / total_matches
+away_win_rate = away_wins / total_matches
+
+# In kết quả
+print(f'Tổng số trận: {total_matches}')
+print(f'Trận thắng của đội chủ nhà: {home_wins} ({home_win_rate:.2%})')
+print(f'Trận thắng của đội khách: {away_wins} ({away_win_rate:.2%})')
+print(f'Trận hòa: {draws} ({draws / total_matches:.2%})')
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+#Câu 2  Tương quan giữa xG và số bàn thắng thực tế là bao nhiêu? Có hiện tượng underperformance hay overperformance không?
+# Tính tổng số bàn thắng và tổng xG
+df['total_goals'] = df['home_score'] + df['away_score']
+df['total_xg'] = df['home_xg'] + df['away_xg']
+
+# Tính tổng cộng
+total_goals = df['total_goals'].sum()
+total_xg = df['total_xg'].sum()
+
+print(f"Tổng bàn thắng thực tế: {total_goals}")
+print(f"Tổng xG: {total_xg}")
+print(f"Chênh lệch (goals - xG): {total_goals - total_xg:.2f}")
+
+# Kiểm tra overperformance / underperformance
+if total_goals > total_xg:
+    print("→ Có hiện tượng overperformance (hiệu suất vượt kỳ vọng).")
+elif total_goals < total_xg:
+    print("→ Có hiện tượng underperformance (hiệu suất thấp hơn kỳ vọng).")
+else:
+    print("→ Hiệu suất đúng với kỳ vọng.")
+
+# Tính hệ số tương quan Pearson
+correlation = df[['total_goals', 'total_xg']].corr().iloc[0, 1]
+print(f"Hệ số tương quan Pearson giữa xG và bàn thắng: {correlation:.2f}")
+
+#biểu đồ giữa xG và Goals
+plt.figure(figsize=(8, 5))
+sns.scatterplot(data=df, x='total_xg', y='total_goals')
+sns.regplot(data=df, x='total_xg', y='total_goals', scatter=False, color='red')
+plt.title('Tương quan giữa xG và số bàn thắng thực tế')
+plt.xlabel('Expected Goals (xG)')
+plt.ylabel('Thực tế Goals')
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+
+
+#Câu 3 Tỷ lệ bàn thắng đến từ penalty là bao nhiêu cho mỗi đội?
+import pandas as pd
+from scipy.stats import pearsonr
+import matplotlib.pyplot as plt
+import seaborn as sns
+df = pd.read_csv(r'C:\Users\PC\Desktop\VTI Academy\World Cup_final_cleanded.scv')
+
+df['match_result'] = df.apply(
+    lambda row: 'Home Win' if row['home_score'] > row['away_score']
+    else ('Away Win' if row['home_score'] < row['away_score'] else 'Draw'),
+    axis=1
+)
+# Xem vài dòng kết quả
+print(df[['home_team', 'away_team', 'home_score', 'away_score', 'match_result']])
+
+# Đếm số lần xuất hiện chuỗi '(P)' trong cột 'home_penalty_goal'
+df['penalty_count'] = df['home_penalty_goal'].str.count(r'\(P\)')
+# Hiển thị kết quả
+print(df[['home_penalty_goal', 'penalty_count']])
+
+# Đếm số lần xuất hiện chuỗi '(P)' trong cột 'away_penalty_goal'
+df['penalty_count_away_team'] = df['away_penalty_goal'].str.count(r'\(P\)')
+# Hiển thị kết quả
+print(df[['away_penalty_goal', 'penalty_count_away_team']])
+# Tỉ lệ bàn thắng đến từ Penalty của các đội
+df['penalty_ratio_home_team'] = df['penalty_count']/df['home_score']
+print(df['penalty_ratio_home_team'])
+df['penalty_ratio_away_team'] = df['penalty_count_away_team']/df['away_score']
+print(df['penalty_ratio_away_team'])
+# Gộp dữ liệu để vẽ bằng seaborn
+df_melt = pd.melt(
+    df,
+    value_vars=['penalty_ratio_home_team', 'penalty_ratio_away_team'],
+    var_name='Team',
+    value_name='Penalty Ratio'
+)
+
+# Chuyển nhãn dễ hiểu hơn
+df_melt['Team'] = df_melt['Team'].replace({
+    'penalty_ratio_home_team': 'Home Team',
+    'penalty_ratio_away_team': 'Away Team'
+})
+
+# Vẽ boxplot để so sánh phân bố tỷ lệ penalty giữa hai loại đội
+sns.boxplot(data=df_melt, x='Team', y='Penalty Ratio', palette='Set2')
+plt.title('So sánh tỷ lệ bàn thắng từ penalty giữa đội chủ nhà và đội khách')
+plt.ylabel('Tỷ lệ bàn thắng từ penalty')
+plt.xlabel('Đội')
+
+plt.grid(True, linestyle='--', alpha=0.5)
+plt.tight_layout()
+plt.show()
+
+
+# Trung bình tỷ lệ penalty theo loại đội
+home_avg = df['penalty_ratio_home_team'].mean()
+away_avg = df['penalty_ratio_away_team'].mean()
+
+# Vẽ cột so sánh
+plt.figure(figsize=(6, 4))
+plt.bar(['Home Team', 'Away Team'], [home_avg, away_avg], color=['skyblue', 'salmon'])
+plt.title('Trung bình tỷ lệ bàn thắng từ penalty')
+plt.ylabel('Tỷ lệ (%)')
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.tight_layout()
+plt.show()
+
+
+#câu 4
+# Tính số bàn phản lưới mà mỗi đội phải nhận
+# Đếm số lần '(OG)' xuất hiện trong một cột văn bản, ví dụ 'home_goal_long'
+df['og_count'] = df['away_own_goal'].str.count(r'\(OG\)')
+
+# Hiển thị kết quả
+print(df[['away_own_goal', 'og_count']])
+
+df['total_goals'] = df['home_score'] + df['away_score']
+print(df['total_goals'])
+df['own_goals_ratio'] = df['og_count']/df['total_goals']
+print(['own_goals_ratio'])
+#câu 4
+# Tính số bàn phản lưới mà mỗi đội phải nhận
+home_conceded_og = df[['away_team', ]].rename(columns={
+    'away_team': 'team',})
+
+away_conceded_og = df[['home_team', 'away_own_goal']].rename(columns={
+    'home_team': 'team',
+    'away_own_goal': 'own_goal_against'
+})
+
+# Gộp lại toàn bộ
+own_goal_against_all = pd.concat([home_conceded_og, away_conceded_og])
+
+# Tổng số bàn phản lưới mà mỗi đội phải nhận
+result = own_goal_against_all.groupby('team')['own_goal_against'].sum().reset_index()
+
+# Sắp xếp giảm dần (sai)
+result_sorted = result.sort_values(by='own_goal_against', ascending=False)
+
+# Ép kiểu có xử lý lỗi (nếu có chuỗi không chuyển được)
+result['own_goal_against'] = pd.to_numeric(result['own_goal_against'], errors='coerce')
+# Sau đó sort
+result_sorted = result.sort_values(by='own_goal_against', ascending=False)
+
+print(result_sorted.head(10))  # top 10 đội dễ thủng lưới do phản lưới nhà
+
+
+
+import pandas as pd
+from scipy.stats import pearsonr
+df = pd.read_csv(r'C:\Users\PC\Desktop\VTI Academy\World Cup_final_cleanded.scv')
+df.info()
+# Bước 1: Lọc các trận có own goal
+df['og_count'] = df['away_own_goal'].str.count(r'\(OG\)')
+own_goals_df = df[df['og_count'].notna() & (df['og_count'] > 0)]
+
+# Bước 2: Nhóm theo home_team vì away_own_goal là phản lưới vào lưới đội chủ nhà
+own_goal_against = own_goals_df.groupby('home_team')['away_own_goal'].sum().reset_index()
+own_goal_againstw = own_goals_df.groupby('away_team')['away_own_goal'].sum().reset_index()
+# Sắp xếp giảm dần để tìm đội bị phản lưới nhiều nhất
+own_goal_against = own_goal_against.sort_values(by='away_own_goal', ascending=False)
+own_goal_againstw = own_goal_againstw.sort_values(by='away_own_goal', ascending=False)
+# In kết quả
+print("Đội chủ nhà dễ được 'tặng' bàn phản lưới nhiều nhất là:")
+print(own_goal_against.head())
+print("Đội khách dễ được 'tặng' bàn phản lưới nhiều nhất là:")
+print(own_goal_againstw.head())
+
+
+
+
